@@ -1,2 +1,2 @@
-# synacor_challenge
-Synacor challenge
+# Synacor challenge in Rust
+Read src/main.rs
