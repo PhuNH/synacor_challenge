@@ -66,7 +66,33 @@ take teleporter
 use teleporter
 take business card
 "#;
-    vm.run(prepared.chars().collect());
+    let second_prepared = r#"north
+north
+north
+north
+north
+north
+north
+north
+north
+take orb
+north
+east
+east
+north
+west
+south
+east
+east
+west
+north
+north
+east
+vault
+take mirror
+use mirror
+"#;
+    vm.run(prepared, second_prepared);
 }
 
 /* python z3
@@ -186,6 +212,23 @@ af(1, n) = af(0, af(1, n-1)) = af(1, n-1) + 1 = af(1, n-2) + 2 = ... = af(1, 0) 
 af(1, 0) = af(0, x) = x+1
 */
 
+/* room grid
+                       30
+|   * y | 8 y |  - r |  1 ry |
+|   4 g | *   | 11   |  *  y |
+|   + g | 4   |  -   | 18  y |
+| !22   | - r |  9 r |  *  y |
+
+*/
+
+// SPOILER AHEAD
+
+
+
+
+
+
+
 /*
 oHVlEiuRDDqk - from arch-spec
 SaFPTyYYPxtc - welcome before self-test
@@ -194,5 +237,5 @@ ycDPlkIuhlbC - tablet
 frOgQzZlguet - found oil
 buMeVvBwqgHJ - after using teleporter with r7 = 0
 uQWfNPkCwlXV - after using teleporter with r7 = 25734
-
+qAddloUWuIAd - in the vault, on my forehead - bAIuWUolbbAp
 */

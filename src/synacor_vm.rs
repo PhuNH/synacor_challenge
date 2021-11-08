@@ -1,27 +1,6 @@
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 use std::io;
-
-#[derive(Clone, Debug)]
-pub struct SynacorVm {
-    memory: Vec<u16>,
-    registers: Vec<u16>,
-    stack: Vec<u16>,
-    ip: usize
-}
-
-const LITERAL: u16 = 32767;
-const INVALID: u16 = 32776;
-
-fn show_reg(x: u16) -> String {
-    assert!(x > LITERAL && x < INVALID);
-    format!("r{}", x - LITERAL - 1)
-}
-
-fn show_val(x: u16) -> String {
-    assert!(x < INVALID);
-    if x <= LITERAL { x.to_string() }
-    else { show_reg(x) }
-}
+use std::iter::FromIterator;
 
 fn ackermann_3n(r7: u16, n: u32) -> u16 {
     // (x+1)^(n+2) + (x+1)^(n+1) + (x+1)^n + ... + (x+1)^2 + x
@@ -51,6 +30,87 @@ fn find_r7() -> u16 {
     r7
 }
 
+struct SearchUnit {
+    path: Vec<usize>,
+    value: i32,
+    op: i32,
+}
+
+impl SearchUnit {
+    fn new() -> SearchUnit {
+        SearchUnit { path: vec![0], value: 22, op: -3 }
+    }
+}
+
+fn find_route(symbols: Vec<i32>) -> Vec<usize> {
+    let mut queue = VecDeque::new();
+    queue.push_back(SearchUnit::new() );
+    let mut passed: HashSet<(usize, i32)> = HashSet::new();
+    passed.insert((0, 22));
+    loop {
+        let current_unit = queue.pop_front().unwrap();
+        let loc = *(current_unit.path.last().unwrap()) as isize;
+        let (x, y) = (loc % 4, loc / 4);
+        let mut neighbors: HashSet<isize> = HashSet::from_iter(
+            vec![loc-1, loc+1, loc-4, loc+4].into_iter());
+        if x == 0 { neighbors.remove(&(loc-1)); }
+        else if x == 3 { neighbors.remove(&(loc+1)); }
+        if y == 0 { neighbors.remove(&(loc-4)); }
+        else if y == 3 { neighbors.remove(&(loc+4)); }
+        let next: Vec<_> = neighbors.into_iter().map(|n| {
+            let op = if symbols[n as usize] > -3 && symbols[n as usize] <= 0 { symbols[n as usize] } else { -3 };
+            let value =
+                if n == 0 { 22 }
+                else if symbols[n as usize] <= 0 { current_unit.value }
+                else {
+                    match current_unit.op {
+                        0 => current_unit.value * symbols[n as usize],
+                        -1 => current_unit.value + symbols[n as usize],
+                        _ => current_unit.value - symbols[n as usize]
+                    }
+                };
+            let mut path = current_unit.path.clone();
+            path.push(n as usize);
+            SearchUnit { path, value, op }
+        }).filter(|su| {
+            let loc = *(su.path.last().unwrap());
+            !passed.contains(&(loc, su.value)) && (loc != 15 || (loc == 15 && su.value == 30))
+        }).collect();
+
+        if let Some(su) = next.iter()
+            .find(|&su| *su.path.last().unwrap() == 15 && su.value == 30) {
+            break su.path.clone();
+        }
+
+        next.into_iter().for_each(|su| {
+            passed.insert((*su.path.last().unwrap(), su.value));
+            queue.push_back(su);
+        });
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SynacorVm {
+    memory: Vec<u16>,
+    registers: Vec<u16>,
+    stack: Vec<u16>,
+    ip: usize
+}
+
+const LITERAL: u16 = 32767;
+const INVALID: u16 = 32776;
+
+fn show_reg(x: u16) -> String {
+    assert!(x > LITERAL && x < INVALID);
+    format!("r{}", x - LITERAL - 1)
+}
+
+fn show_val(x: u16) -> String {
+    assert!(x < INVALID);
+    if x <= LITERAL { x.to_string() }
+    else { show_reg(x) }
+}
+
 impl SynacorVm {
     pub fn new(program: Vec<u16>) -> SynacorVm {
         SynacorVm {
@@ -72,8 +132,8 @@ impl SynacorVm {
         self.registers[(x - LITERAL) as usize - 1] = val;
     }
 
-    pub fn run(&mut self, prepared: Vec<char>) -> u32 {
-        let mut in_buffer: VecDeque<char> = VecDeque::from(prepared);
+    pub fn run(&mut self, prepared: &str, second_prepared: &str) -> u32 {
+        let mut in_buffer: VecDeque<char> = VecDeque::from(prepared.chars().collect::<Vec<_>>());
         let mut out_buffer = String::new();
         let mut extracting = false;
         let mut count = 0;
@@ -257,6 +317,11 @@ impl SynacorVm {
                             self.registers[7] = r7;
                             println!("r7: {}", r7);
                             in_buffer = "use teleporter\n".chars().collect();
+                            stop += 1;
+                        } else if stop == 1 {
+                            let symbols = vec![22, -2, 9, 0, -1, 4, -2, 18, 4, 0, 11, 0, 0, 8, -2, 1];
+                            println!("route: {:?}", find_route(symbols));
+                            in_buffer = second_prepared.chars().collect();
                             stop += 1;
                         } else {
                             let mut temp = String::new();
